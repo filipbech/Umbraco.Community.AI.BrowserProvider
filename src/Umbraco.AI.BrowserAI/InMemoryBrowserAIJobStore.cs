@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
 using Community.Umbraco.AI.BrowserAI.Models;
+using Microsoft.Extensions.Logging;
+using Umbraco.Cms.Core.Models.ServerEvents;
+using Umbraco.Cms.Core.ServerEvents;
 
 namespace Community.Umbraco.AI.BrowserAI;
 
@@ -14,9 +17,22 @@ public class InMemoryBrowserAIJobStore : IBrowserAIJobStore
 {
     private readonly ConcurrentDictionary<string, BrowserAIJob> _jobs = new();
     private readonly object _pendingLock = new();
+    private readonly IServerEventRouter _serverEventRouter;
+    private readonly ILogger<InMemoryBrowserAIJobStore> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InMemoryBrowserAIJobStore"/> class.
+    /// </summary>
+    public InMemoryBrowserAIJobStore(
+        IServerEventRouter serverEventRouter,
+        ILogger<InMemoryBrowserAIJobStore> logger)
+    {
+        _serverEventRouter = serverEventRouter;
+        _logger = logger;
+    }
 
     /// <inheritdoc />
-    public Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType)
+    public async Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType)
     {
         var job = new BrowserAIJob
         {
@@ -28,7 +44,21 @@ public class InMemoryBrowserAIJobStore : IBrowserAIJobStore
 
         _jobs[job.Id] = job;
 
-        return Task.FromResult(job);
+        try
+        {
+            await _serverEventRouter.BroadcastEventAsync(new ServerEvent
+            {
+                EventSource = "BrowserAI",
+                EventType = "JobCreated",
+                Key = Guid.Parse(job.Id)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to broadcast SignalR notification for job {JobId}", job.Id);
+        }
+
+        return job;
     }
 
     /// <inheritdoc />
