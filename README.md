@@ -7,11 +7,11 @@ An experimental community AI provider for Umbraco that routes inference requests
 ## How It Works
 
 1. When an AI request is made, the provider creates a job in an in-memory queue on the server
-2. A script running in the Umbraco backoffice polls for pending jobs
-3. The script processes jobs using Chrome's Prompt API (`LanguageModel`)
+2. A SignalR notification is broadcast through Umbraco's existing server event hub to all connected backoffice clients
+3. The backoffice entry point picks up the notification and processes the job using Chrome's Prompt API (`LanguageModel`)
 4. Results are posted back to the server and returned to the caller
 
-The Umbraco backoffice must be open in a supported Chrome browser for the provider to function.
+The provider piggybacks on Umbraco's built-in SignalR infrastructure for near-instant job delivery, with a slow fallback poll (every 30s) for resilience. The Umbraco backoffice must be open in a supported Chrome browser for the provider to function.
 
 ## Chrome Setup
 
