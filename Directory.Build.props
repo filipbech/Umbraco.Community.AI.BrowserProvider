@@ -10,7 +10,7 @@
   <PropertyGroup>
     <Authors>Filip Bech</Authors>
     <Copyright>Copyright © Filip Bech</Copyright>
-    <!-- <PackageIcon>logo-128.png</PackageIcon> -->
+    <PackageIcon>logo-128.png</PackageIcon>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageProjectUrl>https://github.com/filipbech/Community.Umbraco.AI.BrowserAI</PackageProjectUrl>
     <RepositoryUrl>https://github.com/filipbech/Community.Umbraco.AI.BrowserAI</RepositoryUrl>
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <None Include="$(MSBuildThisFileDirectory)../logo-128.png" Pack="true" Visible="false" PackagePath="" /> -->
+    <None Include="$(MSBuildThisFileDirectory)../logo-128.png" Pack="true" Visible="false" PackagePath="" />
     <None Include="$(MSBuildThisFileDirectory)../LICENSE.md" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
