@@ -1,3 +1,5 @@
+using Community.Umbraco.AI.BrowserAI.Filters;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Community.Umbraco.AI.BrowserAI;
@@ -16,6 +18,10 @@ public static class BrowserAIServiceCollectionExtensions
     {
         services.AddSingleton<IBrowserAIJobStore, InMemoryBrowserAIJobStore>();
         services.AddHostedService<BrowserAIJobCleanupService>();
+        services.AddScoped<BrowserAIEnabledFilter>();
+
+        services.AddOptions<BrowserAIProviderSettings>()
+            .BindConfiguration("Umbraco:AI:BrowserProvider");
 
         return services;
     }

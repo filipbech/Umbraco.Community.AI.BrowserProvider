@@ -26,8 +26,8 @@ public class BrowserAIProviderSettings
     public int MaxJobAgeSeconds { get; set; } = 300;
 
     /// <summary>
-    /// Optional fallback provider ID to use when browser AI times out.
+    /// Maximum prompt length in characters before truncation.
     /// </summary>
     [AIField]
-    public string? FallbackProviderId { get; set; }
+    public int MaxPromptLength { get; set; } = 4000;
 }

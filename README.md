@@ -75,7 +75,7 @@ Add the following to your `appsettings.json`:
         "Enabled": true,
         "TimeoutSeconds": 30,
         "MaxJobAgeSeconds": 300,
-        "FallbackProviderId": "openai"
+        "MaxPromptLength": 4000
       }
     }
   }
@@ -89,7 +89,7 @@ Add the following to your `appsettings.json`:
 | `Enabled` | `true` | Whether the Browser AI provider is enabled |
 | `TimeoutSeconds` | `30` | How long to wait for a browser response before timing out |
 | `MaxJobAgeSeconds` | `300` | How long to keep jobs before purging them |
-| `FallbackProviderId` | `null` | Optional provider ID to fall back to when Browser AI times out (e.g., `openai`, `anthropic`) |
+| `MaxPromptLength` | `4000` | Maximum prompt length in characters before truncation |
 
 ## Supported Operations
 

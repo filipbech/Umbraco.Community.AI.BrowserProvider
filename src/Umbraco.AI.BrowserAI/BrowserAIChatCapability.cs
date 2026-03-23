@@ -35,9 +35,9 @@ public class BrowserAIChatCapability(BrowserAIProvider provider) : AIChatCapabil
     {
         var operationType = modelId switch
         {
-            SummarizeModel => "summarize",
-            TranslateModel => "translate",
-            _ => "chat"
+            SummarizeModel => BrowserAIOperationTypes.Summarize,
+            TranslateModel => BrowserAIOperationTypes.Translate,
+            _ => BrowserAIOperationTypes.Chat
         };
 
         return new BrowserAIChatClient(

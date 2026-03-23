@@ -14,4 +14,9 @@ public class StatusResponse
     /// Version of the Browser AI provider.
     /// </summary>
     public string Version { get; set; } = "1.0";
+
+    /// <summary>
+    /// Maximum prompt length in characters before truncation.
+    /// </summary>
+    public int MaxPromptLength { get; set; } = 4000;
 }

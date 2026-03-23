@@ -14,7 +14,6 @@ public class BrowserAIChatClient : IChatClient
     private readonly ILogger _logger;
     private readonly BrowserAIProviderSettings _settings;
     private readonly string _operationType;
-    private readonly IChatClient? _fallbackClient;
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
 
@@ -25,14 +24,12 @@ public class BrowserAIChatClient : IChatClient
         IBrowserAIJobStore jobStore,
         ILogger logger,
         BrowserAIProviderSettings settings,
-        string operationType,
-        IChatClient? fallbackClient = null)
+        string operationType)
     {
         _jobStore = jobStore;
         _logger = logger;
         _settings = settings;
         _operationType = operationType;
-        _fallbackClient = fallbackClient;
     }
 
     /// <inheritdoc />
@@ -45,18 +42,10 @@ public class BrowserAIChatClient : IChatClient
         CancellationToken cancellationToken = default)
     {
         var messagesList = chatMessages.ToList();
-        var prompt = BuildPromptFromMessages(messagesList);
+        var (systemPrompt, prompt) = BuildPromptsFromMessages(messagesList);
 
-        try
-        {
-            var result = await ProcessJobAsync(prompt, cancellationToken);
-            return new ChatResponse(new ChatMessage(ChatRole.Assistant, result));
-        }
-        catch (TimeoutException) when (_fallbackClient is not null)
-        {
-            _logger.LogWarning("Browser AI timed out, falling back to {FallbackProvider}", _settings.FallbackProviderId);
-            return await _fallbackClient.GetResponseAsync(chatMessages, options, cancellationToken);
-        }
+        var result = await ProcessJobAsync(prompt, cancellationToken, systemPrompt);
+        return new ChatResponse(new ChatMessage(ChatRole.Assistant, result));
     }
 
     /// <inheritdoc />
@@ -66,34 +55,14 @@ public class BrowserAIChatClient : IChatClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var messagesList = chatMessages.ToList();
-        var prompt = BuildPromptFromMessages(messagesList);
+        var (systemPrompt, prompt) = BuildPromptsFromMessages(messagesList);
 
-        string? result = null;
-        bool useFallback = false;
-
-        try
-        {
-            result = await ProcessJobAsync(prompt, cancellationToken);
-        }
-        catch (TimeoutException) when (_fallbackClient is not null)
-        {
-            _logger.LogWarning("Browser AI timed out, falling back to {FallbackProvider}", _settings.FallbackProviderId);
-            useFallback = true;
-        }
-
-        if (useFallback && _fallbackClient is not null)
-        {
-            await foreach (var update in _fallbackClient.GetStreamingResponseAsync(chatMessages, options, cancellationToken))
-            {
-                yield return update;
-            }
-            yield break;
-        }
+        var result = await ProcessJobAsync(prompt, cancellationToken, systemPrompt);
 
         // Browser AI doesn't support streaming, so we return the complete result as a single update
         yield return new ChatResponseUpdate(
             role: ChatRole.Assistant,
-            content: result ?? string.Empty);
+            content: result);
     }
 
     /// <inheritdoc />
@@ -103,36 +72,48 @@ public class BrowserAIChatClient : IChatClient
     /// <inheritdoc />
     public void Dispose()
     {
-        // Nothing to dispose
     }
 
-    private static string BuildPromptFromMessages(IList<ChatMessage> chatMessages)
+    private static (string? systemPrompt, string prompt) BuildPromptsFromMessages(IList<ChatMessage> chatMessages)
     {
-        // Combine all messages into a single prompt
-        // The last user message is the primary prompt
-        var userMessages = chatMessages
-            .Where(m => m.Role == ChatRole.User)
+        var systemMessages = chatMessages
+            .Where(m => m.Role == ChatRole.System)
             .ToList();
 
-        if (userMessages.Count == 0)
+        var nonSystemMessages = chatMessages
+            .Where(m => m.Role != ChatRole.System)
+            .ToList();
+
+        string? systemPrompt = systemMessages.Count > 0
+            ? string.Join("\n", systemMessages.Select(m => m.Text))
+            : null;
+
+        string prompt;
+        if (nonSystemMessages.Count == 1)
         {
-            return string.Empty;
+            prompt = nonSystemMessages[0].Text ?? string.Empty;
+        }
+        else if (nonSystemMessages.Count > 1)
+        {
+            prompt = string.Join("\n\n", nonSystemMessages.Select(m => $"{m.Role}: {m.Text}"));
+        }
+        else
+        {
+            prompt = string.Empty;
         }
 
-        // If there's only one user message, use it directly
-        if (userMessages.Count == 1)
-        {
-            return userMessages[0].Text ?? string.Empty;
-        }
-
-        // Otherwise, build a conversation context
-        return string.Join("\n\n", chatMessages.Select(m =>
-            $"{m.Role}: {m.Text}"));
+        return (systemPrompt, prompt);
     }
 
-    private async Task<string> ProcessJobAsync(string prompt, CancellationToken cancellationToken)
+    private async Task<string> ProcessJobAsync(string prompt, CancellationToken cancellationToken, string? systemPrompt = null)
     {
-        var job = await _jobStore.CreateJobAsync(prompt, _operationType);
+        if (prompt.Length > _settings.MaxPromptLength)
+        {
+            _logger.LogWarning("Prompt exceeds max length ({Length} > {Max}), truncating", prompt.Length, _settings.MaxPromptLength);
+            prompt = prompt[.._settings.MaxPromptLength];
+        }
+
+        var job = await _jobStore.CreateJobAsync(prompt, _operationType, systemPrompt);
         _logger.LogDebug("Browser AI job {JobId} created with operation type {OperationType}", job.Id, _operationType);
 
         var timeout = TimeSpan.FromSeconds(_settings.TimeoutSeconds);
@@ -158,7 +139,7 @@ public class BrowserAIChatClient : IChatClient
             }
         }
 
-        // Timeout reached
+        // Timeout reached — mark failed so browser knows to discard any late result
         await _jobStore.MarkFailedAsync(job.Id, "Timed out waiting for browser");
         _logger.LogWarning("Browser AI job {JobId} timed out after {Timeout} seconds", job.Id, _settings.TimeoutSeconds);
 

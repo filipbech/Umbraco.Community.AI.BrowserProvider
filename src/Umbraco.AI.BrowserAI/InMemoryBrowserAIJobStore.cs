@@ -32,11 +32,12 @@ public class InMemoryBrowserAIJobStore : IBrowserAIJobStore
     }
 
     /// <inheritdoc />
-    public async Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType)
+    public async Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType, string? systemPrompt = null)
     {
         var job = new BrowserAIJob
         {
             Prompt = prompt,
+            SystemPrompt = systemPrompt,
             OperationType = operationType,
             Status = BrowserAIJobStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow
@@ -44,18 +45,21 @@ public class InMemoryBrowserAIJobStore : IBrowserAIJobStore
 
         _jobs[job.Id] = job;
 
-        try
+        if (Guid.TryParse(job.Id, out var jobGuid))
         {
-            await _serverEventRouter.BroadcastEventAsync(new ServerEvent
+            try
             {
-                EventSource = "BrowserAI",
-                EventType = "JobCreated",
-                Key = Guid.Parse(job.Id)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to broadcast SignalR notification for job {JobId}", job.Id);
+                await _serverEventRouter.BroadcastEventAsync(new ServerEvent
+                {
+                    EventSource = BrowserAIConstants.SignalREventSource,
+                    EventType = BrowserAIConstants.SignalREventTypeJobCreated,
+                    Key = jobGuid
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to broadcast SignalR notification for job {JobId}", job.Id);
+            }
         }
 
         return job;

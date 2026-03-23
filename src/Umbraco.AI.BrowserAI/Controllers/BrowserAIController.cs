@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Community.Umbraco.AI.BrowserAI.Filters;
 using Community.Umbraco.AI.BrowserAI.Models;
 using Umbraco.Cms.Web.Common.Authorization;
 
@@ -12,6 +13,7 @@ namespace Community.Umbraco.AI.BrowserAI.Controllers;
 /// </summary>
 [ApiController]
 [Route("umbraco/api/browserai")]
+[ServiceFilter(typeof(BrowserAIEnabledFilter))]
 public class BrowserAIController : ControllerBase
 {
     private readonly IBrowserAIJobStore _jobStore;
@@ -38,15 +40,11 @@ public class BrowserAIController : ControllerBase
     [AllowAnonymous]
     public IActionResult GetStatus()
     {
-        if (!_settings.Value.Enabled)
-        {
-            return StatusCode(503, new { error = "Browser AI provider is disabled" });
-        }
-
         return Ok(new StatusResponse
         {
             Available = true,
-            Version = "1.0"
+            Version = "1.0",
+            MaxPromptLength = _settings.Value.MaxPromptLength
         });
     }
 
@@ -54,14 +52,9 @@ public class BrowserAIController : ControllerBase
     /// Gets the next pending job for processing.
     /// </summary>
     [HttpGet("jobs/next")]
-    [AllowAnonymous] // TODO: Add proper auth - jobs are only useful from backoffice context
+    [Authorize(Policy = AuthorizationPolicies.BackOfficeAccess)]
     public async Task<IActionResult> GetNextJob()
     {
-        if (!_settings.Value.Enabled)
-        {
-            return StatusCode(503, new { error = "Browser AI provider is disabled" });
-        }
-
         var job = await _jobStore.GetNextPendingJobAsync();
 
         if (job is null)
@@ -75,6 +68,7 @@ public class BrowserAIController : ControllerBase
         {
             Id = job.Id,
             Prompt = job.Prompt,
+            SystemPrompt = job.SystemPrompt,
             OperationType = job.OperationType
         });
     }
@@ -83,18 +77,24 @@ public class BrowserAIController : ControllerBase
     /// Posts the result of a completed job.
     /// </summary>
     [HttpPost("jobs/{id}/result")]
-    [AllowAnonymous] // TODO: Add proper auth
+    [Authorize(Policy = AuthorizationPolicies.BackOfficeAccess)]
     public async Task<IActionResult> PostResult(string id, [FromBody] JobResultRequest request)
     {
-        if (!_settings.Value.Enabled)
+        if (string.IsNullOrWhiteSpace(request.Result))
         {
-            return StatusCode(503, new { error = "Browser AI provider is disabled" });
+            return BadRequest(new { error = "Result cannot be empty" });
         }
 
         var job = await _jobStore.GetJobAsync(id);
         if (job is null)
         {
             return NotFound(new { error = "Job not found" });
+        }
+
+        if (job.Status != BrowserAIJobStatus.Processing)
+        {
+            _logger.LogDebug("Ignoring result for job {JobId} in status {Status}", id, job.Status);
+            return Conflict(new { error = $"Job is in status {job.Status}, expected Processing" });
         }
 
         await _jobStore.MarkCompleteAsync(id, request.Result);
@@ -107,18 +107,24 @@ public class BrowserAIController : ControllerBase
     /// Posts an error for a failed job.
     /// </summary>
     [HttpPost("jobs/{id}/error")]
-    [AllowAnonymous] // TODO: Add proper auth
+    [Authorize(Policy = AuthorizationPolicies.BackOfficeAccess)]
     public async Task<IActionResult> PostError(string id, [FromBody] JobErrorRequest request)
     {
-        if (!_settings.Value.Enabled)
+        if (string.IsNullOrWhiteSpace(request.Error))
         {
-            return StatusCode(503, new { error = "Browser AI provider is disabled" });
+            return BadRequest(new { error = "Error message cannot be empty" });
         }
 
         var job = await _jobStore.GetJobAsync(id);
         if (job is null)
         {
             return NotFound(new { error = "Job not found" });
+        }
+
+        if (job.Status != BrowserAIJobStatus.Processing)
+        {
+            _logger.LogDebug("Ignoring error for job {JobId} in status {Status}", id, job.Status);
+            return Conflict(new { error = $"Job is in status {job.Status}, expected Processing" });
         }
 
         await _jobStore.MarkFailedAsync(id, request.Error);

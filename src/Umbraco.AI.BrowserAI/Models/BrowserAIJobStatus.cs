@@ -23,10 +23,5 @@ public enum BrowserAIJobStatus
     /// <summary>
     /// Job failed with an error.
     /// </summary>
-    Failed,
-
-    /// <summary>
-    /// Job timed out waiting for browser response.
-    /// </summary>
-    TimedOut
+    Failed
 }

@@ -10,7 +10,7 @@ namespace Community.Umbraco.AI.BrowserAI;
 /// <remarks>
 /// This provider routes inference requests to Chrome's built-in browser AI.
 /// The browser runs the model locally; the server acts as a job queue.
-/// A Service Worker handles execution so the browser tab does not need to stay open.
+/// The Umbraco backoffice must be open in a supported Chrome browser for processing.
 /// </remarks>
 [AIProvider("browser-ai", "Browser AI (Gemini Nano)")]
 public class BrowserAIProvider : AIProviderBase<BrowserAIProviderSettings>

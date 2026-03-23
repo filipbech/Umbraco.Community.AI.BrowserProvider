@@ -12,8 +12,9 @@ public interface IBrowserAIJobStore
     /// </summary>
     /// <param name="prompt">The prompt text.</param>
     /// <param name="operationType">The operation type (e.g., "chat", "summarize", "translate").</param>
+    /// <param name="systemPrompt">Optional system prompt providing context and instructions.</param>
     /// <returns>The created job.</returns>
-    Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType);
+    Task<BrowserAIJob> CreateJobAsync(string prompt, string operationType, string? systemPrompt = null);
 
     /// <summary>
     /// Gets the next pending job and marks it as processing.

@@ -5,7 +5,7 @@
  * and processes them using Chrome's Prompt API (LanguageModel).
  *
  * Uses Umbraco's existing SignalR server event hub for push notifications,
- * with a slow fallback poll for resilience.
+ * with a fallback poll for resilience.
  */
 
 import { UMB_AUTH_CONTEXT } from '@umbraco-cms/backoffice/auth';
@@ -15,19 +15,43 @@ import { HubConnectionBuilder } from '@umbraco-cms/backoffice/external/signalr';
 const POLL_ENDPOINT = '/umbraco/api/browserai/jobs/next';
 const RESULT_ENDPOINT = (id) => `/umbraco/api/browserai/jobs/${id}/result`;
 const ERROR_ENDPOINT = (id) => `/umbraco/api/browserai/jobs/${id}/error`;
-const FALLBACK_POLL_INTERVAL = 30000; // 30 seconds - slow fallback only
-const MAX_PROMPT_LENGTH = 4000;
+const STATUS_ENDPOINT = '/umbraco/api/browserai/status';
+const FALLBACK_POLL_INTERVAL = 10000; // 10 seconds — must be shorter than server timeout
 
-let isProcessing = false;
-let modelReady = false;
+const OPERATION_SUMMARIZE = 'summarize';
+const OPERATION_TRANSLATE = 'translate';
+
+const SIGNALR_EVENT_SOURCE = 'BrowserAI';
+const SIGNALR_EVENT_TYPE_JOB_CREATED = 'JobCreated';
 
 export const onInit = (host) => {
     console.log('[BrowserAI] Initializing Browser AI job processor');
 
-    initBrowserAI(host);
+    const state = {
+        isProcessing: false,
+        modelReady: false,
+        maxPromptLength: 4000,
+        authContext: null,
+    };
+
+    host.consumeContext(UMB_AUTH_CONTEXT, (ctx) => {
+        state.authContext = ctx;
+        initBrowserAI(host, state);
+    });
 };
 
-async function initBrowserAI(host) {
+async function authFetch(state, url, options = {}) {
+    if (state.authContext) {
+        const token = await state.authContext.getLatestToken();
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`,
+        };
+    }
+    return fetch(url, options);
+}
+
+async function initBrowserAI(host, state) {
     const available = await checkAndReportAvailability();
 
     if (!available) {
@@ -35,26 +59,40 @@ async function initBrowserAI(host) {
         return;
     }
 
-    await waitForModelReady();
+    // Fetch server configuration
+    try {
+        const statusResponse = await authFetch(state, STATUS_ENDPOINT);
+        if (statusResponse.ok) {
+            const status = await statusResponse.json();
+            if (status.maxPromptLength) {
+                state.maxPromptLength = status.maxPromptLength;
+                console.log('[BrowserAI] Max prompt length configured to:', state.maxPromptLength);
+            }
+        }
+    } catch (e) {
+        console.warn('[BrowserAI] Could not fetch server config, using defaults');
+    }
+
+    await waitForModelReady(state);
 
     // Connect to SignalR for push notifications
-    connectSignalR(host);
+    connectSignalR(host, state);
 
-    // Slow fallback poll in case SignalR connection drops
+    // Fallback poll in case SignalR connection drops
     console.log('[BrowserAI] Starting fallback poll (every ' + FALLBACK_POLL_INTERVAL / 1000 + 's)');
-    setInterval(processNextJob, FALLBACK_POLL_INTERVAL);
+    setInterval(() => processNextJob(state), FALLBACK_POLL_INTERVAL);
 
     // Process any jobs already in the queue
-    await processNextJob();
+    await processNextJob(state);
 }
 
 /**
  * Connect to Umbraco's SignalR server event hub and listen for BrowserAI job notifications.
  */
-function connectSignalR(host) {
-    host.consumeContext(UMB_AUTH_CONTEXT, (authContext) => {
+function connectSignalR(host, state) {
+    host.consumeContext(UMB_AUTH_CONTEXT, (authCtx) => {
         host.consumeContext(UMB_SERVER_CONTEXT, async (serverContext) => {
-            const token = await authContext.getLatestToken();
+            const token = await authCtx.getLatestToken();
             const serverUrl = serverContext.getServerUrl();
 
             if (!token || !serverUrl) {
@@ -67,14 +105,14 @@ function connectSignalR(host) {
 
             const connection = new HubConnectionBuilder()
                 .withUrl(hubUrl, {
-                    accessTokenFactory: () => authContext.getLatestToken(),
+                    accessTokenFactory: () => authCtx.getLatestToken(),
                 })
                 .build();
 
             connection.on('notify', (event) => {
-                if (event.eventSource === 'BrowserAI' && event.eventType === 'JobCreated') {
+                if (event.eventSource === SIGNALR_EVENT_SOURCE && event.eventType === SIGNALR_EVENT_TYPE_JOB_CREATED) {
                     console.log('[BrowserAI] SignalR: new job notification received');
-                    processNextJob();
+                    processNextJob(state);
                 }
             });
 
@@ -96,7 +134,7 @@ function connectSignalR(host) {
 /**
  * Wait for the model to be fully ready and verify it works with a test prompt.
  */
-async function waitForModelReady() {
+async function waitForModelReady(state) {
     console.log('[BrowserAI] Waiting for model to be fully ready...');
 
     let attempts = 0;
@@ -109,19 +147,22 @@ async function waitForModelReady() {
 
             if (availability === 'available') {
                 console.log('[BrowserAI] Model reports available, testing with simple prompt...');
+                let testSession;
 
                 try {
-                    const testSession = await LanguageModel.create();
+                    testSession = await LanguageModel.create();
                     console.log('[BrowserAI] Test session created');
 
                     const testResult = await testSession.prompt('Say "Hello" and nothing else.');
                     console.log('[BrowserAI] Test prompt succeeded! Result:', testResult);
 
-                    modelReady = true;
+                    state.modelReady = true;
                     updateStatusIndicator('active');
                     return;
                 } catch (testErr) {
                     console.warn('[BrowserAI] Test prompt failed:', testErr.name, testErr.message);
+                } finally {
+                    testSession?.destroy?.();
                 }
             }
 
@@ -143,83 +184,81 @@ async function waitForModelReady() {
 /**
  * Process the next pending job from the queue.
  */
-async function processNextJob() {
-    if (isProcessing) return;
-    if (!modelReady) return;
+async function processNextJob(state) {
+    if (state.isProcessing) return;
+    if (!state.modelReady) return;
 
-    isProcessing = true;
+    state.isProcessing = true;
 
     try {
-        const response = await fetch(POLL_ENDPOINT, {
-            credentials: 'include',
-        });
+        // Loop to process consecutive jobs without recursion
+        while (true) {
+            const response = await authFetch(state, POLL_ENDPOINT);
 
-        if (response.status === 204) {
-            return;
-        }
-
-        if (!response.ok) {
-            console.warn('[BrowserAI] Error response from server:', response.status);
-            return;
-        }
-
-        const job = await response.json();
-        console.log('[BrowserAI] Processing job:', job.id, job.operationType);
-        console.log('[BrowserAI] Prompt length:', job.prompt.length, 'chars');
-        const startTime = performance.now();
-
-        try {
-            let promptText = job.prompt;
-            if (promptText.length > MAX_PROMPT_LENGTH) {
-                console.warn('[BrowserAI] Prompt too long, truncating from', promptText.length, 'to', MAX_PROMPT_LENGTH);
-                promptText = promptText.substring(0, MAX_PROMPT_LENGTH) + '...';
+            if (response.status === 204) {
+                return;
             }
 
-            let finalPrompt;
-            if (job.operationType === 'summarize') {
-                finalPrompt = `Please summarize the following text concisely:\n\n${promptText}`;
-            } else if (job.operationType === 'translate') {
-                finalPrompt = `Please translate the following text to English:\n\n${promptText}`;
-            } else {
-                finalPrompt = promptText;
+            if (!response.ok) {
+                console.warn('[BrowserAI] Error response from server:', response.status);
+                return;
             }
 
-            console.log('[BrowserAI] Creating language model session...');
-            const session = await LanguageModel.create();
-            console.log('[BrowserAI] Sending prompt...');
+            const job = await response.json();
+            console.log('[BrowserAI] Processing job:', job.id, job.operationType);
+            console.log('[BrowserAI] Prompt length:', job.prompt.length, 'chars');
+            const startTime = performance.now();
 
-            const result = await session.prompt(finalPrompt);
+            let session;
+            try {
+                let finalPrompt;
+                if (job.operationType === OPERATION_SUMMARIZE) {
+                    finalPrompt = `Please summarize the following text concisely:\n\n${job.prompt}`;
+                } else if (job.operationType === OPERATION_TRANSLATE) {
+                    finalPrompt = `Please translate the following text to English:\n\n${job.prompt}`;
+                } else {
+                    finalPrompt = job.prompt;
+                }
 
-            console.log('[BrowserAI] Model inference took:', Math.round(performance.now() - startTime), 'ms');
-            console.log('[BrowserAI] Result length:', result.length);
+                const sessionOptions = {};
+                if (job.systemPrompt) {
+                    sessionOptions.systemPrompt = job.systemPrompt;
+                    console.log('[BrowserAI] Using system prompt (' + job.systemPrompt.length + ' chars)');
+                }
 
-            await fetch(RESULT_ENDPOINT(job.id), {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ result }),
-            });
+                console.log('[BrowserAI] Creating language model session...');
+                session = await LanguageModel.create(sessionOptions);
+                console.log('[BrowserAI] Sending prompt...');
 
-            console.log('[BrowserAI] Job completed:', job.id);
+                const result = await session.prompt(finalPrompt);
 
-            // Immediately check for more work
-            isProcessing = false;
-            await processNextJob();
+                console.log('[BrowserAI] Model inference took:', Math.round(performance.now() - startTime), 'ms');
+                console.log('[BrowserAI] Result length:', result.length);
 
-        } catch (err) {
-            console.error('[BrowserAI] Error processing job:', job.id, err.name, err.message);
+                await authFetch(state, RESULT_ENDPOINT(job.id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ result }),
+                });
 
-            await fetch(ERROR_ENDPOINT(job.id), {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ error: `${err.name}: ${err.message}` }),
-            });
+                console.log('[BrowserAI] Job completed:', job.id);
+
+            } catch (err) {
+                console.error('[BrowserAI] Error processing job:', job.id, err.name, err.message);
+
+                await authFetch(state, ERROR_ENDPOINT(job.id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ error: `${err.name}: ${err.message}` }),
+                });
+            } finally {
+                session?.destroy?.();
+            }
         }
     } catch (e) {
         console.warn('[BrowserAI] Error in job processing loop:', e);
     } finally {
-        isProcessing = false;
+        state.isProcessing = false;
     }
 }
 
