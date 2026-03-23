@@ -1,0 +1,19 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+
+## NuGet
+*.nupkg
+*.snupkg
+
+## macOS
+.DS_Store
+
+## IDE
+.vs/
+.vscode/
+*.swp

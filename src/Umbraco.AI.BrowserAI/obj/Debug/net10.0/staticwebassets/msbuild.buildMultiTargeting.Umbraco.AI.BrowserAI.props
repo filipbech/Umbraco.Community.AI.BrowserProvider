@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/Umbraco.AI.BrowserAI.props" />
-</Project>
