@@ -8,6 +8,7 @@
     <RootNamespace>Umbraco.Community.AI.BrowserProvider</RootNamespace>
     <AssemblyName>Umbraco.Community.AI.BrowserProvider</AssemblyName>
     <StaticWebAssetBasePath>App_Plugins/CommunityBrowserAI</StaticWebAssetBasePath>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
   </PropertyGroup>
 
