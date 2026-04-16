@@ -37,13 +37,16 @@ Close and reopen Chrome completely for the flags to take effect.
 
 ### 5. Download the Gemini Nano model
 
-1. Open `chrome://components`
-2. Find **Optimization Guide On Device Model**
-3. Click **Check for update** and wait for the download to complete (the model is approximately 2 GB, but Chrome requires around 22 GB of free disk space)
+1. Open `chrome://on-device-internals/`
+2. Under **LanguageModel**, click **Download** to trigger the model download (approximately 2 GB, but Chrome requires around 22 GB of free disk space)
+
+You can also use `chrome://components` — find **Optimization Guide On Device Model** and click **Check for update**.
 
 ### 6. Verify
 
-Open Chrome DevTools (F12) and run in the console:
+Open `chrome://on-device-internals/` — the LanguageModel status should show as **Available**. You can also test it directly from that page.
+
+Alternatively, open Chrome DevTools (F12) and run in the console:
 
 ```js
 await LanguageModel.availability();
