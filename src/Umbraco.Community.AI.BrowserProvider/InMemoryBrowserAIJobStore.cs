@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Community.Umbraco.AI.BrowserAI.Models;
+using Umbraco.Community.AI.BrowserProvider.Models;
 using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Models.ServerEvents;
 using Umbraco.Cms.Core.ServerEvents;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// In-memory implementation of <see cref="IBrowserAIJobStore"/>.

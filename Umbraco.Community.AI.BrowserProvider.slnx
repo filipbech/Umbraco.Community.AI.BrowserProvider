@@ -5,6 +5,6 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/src/">
-    <Project Path="src/Umbraco.AI.BrowserAI/Umbraco.AI.BrowserAI.csproj" />
+    <Project Path="src/Umbraco.Community.AI.BrowserProvider/Umbraco.Community.AI.BrowserProvider.csproj" />
   </Folder>
 </Solution>

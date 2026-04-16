@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using Community.Umbraco.AI.BrowserAI.Models;
+using Umbraco.Community.AI.BrowserProvider.Models;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// Chat client that uses the browser-based job queue for AI processing.

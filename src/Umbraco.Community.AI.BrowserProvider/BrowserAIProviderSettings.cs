@@ -1,6 +1,6 @@
 using Umbraco.AI.Core.EditableModels;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// Settings for the Browser AI provider.

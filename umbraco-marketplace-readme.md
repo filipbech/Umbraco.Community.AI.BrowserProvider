@@ -21,7 +21,7 @@ An experimental community AI provider for Umbraco that runs AI inference entirel
 
 ## Getting Started
 
-1. Install the package: `dotnet add package Community.Umbraco.AI.BrowserAI`
+1. Install the package: `dotnet add package Umbraco.Community.AI.BrowserProvider`
 2. Register the services in `Program.cs`: `services.AddBrowserAI();`
 3. Enable Chrome's Prompt API:
    - Set `chrome://flags/#prompt-api-for-gemini-nano` to **Enabled**
@@ -34,4 +34,4 @@ An experimental community AI provider for Umbraco that runs AI inference entirel
 
 When an AI request is made, the provider queues a job on the server. A SignalR notification is pushed to the backoffice, where a script picks up the job and processes it using Chrome's local Gemini Nano model. The result is posted back to the server and returned to the caller.
 
-For full documentation and configuration options, see the [GitHub repository](https://github.com/filipbech/Community.Umbraco.AI.BrowserAI).
+For full documentation and configuration options, see the [GitHub repository](https://github.com/filipbech/Umbraco.Community.AI.BrowserProvider).

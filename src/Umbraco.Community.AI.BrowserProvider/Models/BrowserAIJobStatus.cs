@@ -1,4 +1,4 @@
-namespace Community.Umbraco.AI.BrowserAI.Models;
+namespace Umbraco.Community.AI.BrowserProvider.Models;
 
 /// <summary>
 /// Status of a Browser AI job.

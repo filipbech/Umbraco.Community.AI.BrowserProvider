@@ -2,7 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// Background service that periodically purges expired jobs from the store.

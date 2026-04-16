@@ -1,4 +1,4 @@
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// Constants for Browser AI SignalR events.

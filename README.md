@@ -54,7 +54,7 @@ If it returns `"available"`, you're good to go. If it returns `"downloadable"` o
 ## Installation
 
 ```bash
-dotnet add package Community.Umbraco.AI.BrowserAI
+dotnet add package Umbraco.Community.AI.BrowserProvider
 ```
 
 Register the services in your `Program.cs`:

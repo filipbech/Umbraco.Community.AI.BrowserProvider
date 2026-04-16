@@ -6,8 +6,8 @@
   "PackageType": "Package",
   "LicenseTypes": ["Free"],
   "Tags": ["ai", "browser-ai", "gemini-nano", "local-inference", "chrome"],
-  "DocumentationUrl": "https://github.com/filipbech/Community.Umbraco.AI.BrowserAI",
-  "IssueTrackerUrl": "https://github.com/filipbech/Community.Umbraco.AI.BrowserAI/issues",
+  "DocumentationUrl": "https://github.com/filipbech/Umbraco.Community.AI.BrowserProvider",
+  "IssueTrackerUrl": "https://github.com/filipbech/Umbraco.Community.AI.BrowserProvider/issues",
   "AuthorDetails": {
     "Name": "Filip Bech",
     "Description": "",

@@ -1,8 +1,8 @@
-using Community.Umbraco.AI.BrowserAI.Filters;
+using Umbraco.Community.AI.BrowserProvider.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// Extension methods for registering Browser AI services.

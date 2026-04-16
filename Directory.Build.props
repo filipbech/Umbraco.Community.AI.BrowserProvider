@@ -12,8 +12,8 @@
     <Copyright>Copyright © Filip Bech</Copyright>
     <PackageIcon>logo-128.png</PackageIcon>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-    <PackageProjectUrl>https://github.com/filipbech/Community.Umbraco.AI.BrowserAI</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/filipbech/Community.Umbraco.AI.BrowserAI</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/filipbech/Umbraco.Community.AI.BrowserProvider</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/filipbech/Umbraco.Community.AI.BrowserProvider</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

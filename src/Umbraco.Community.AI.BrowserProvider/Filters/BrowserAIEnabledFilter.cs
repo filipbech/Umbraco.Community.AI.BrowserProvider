@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 
-namespace Community.Umbraco.AI.BrowserAI.Filters;
+namespace Umbraco.Community.AI.BrowserProvider.Filters;
 
 /// <summary>
 /// Action filter that returns 503 when the Browser AI provider is disabled.

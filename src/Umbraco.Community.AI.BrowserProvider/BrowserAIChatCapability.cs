@@ -2,7 +2,7 @@ using Microsoft.Extensions.AI;
 using Umbraco.AI.Core.Models;
 using Umbraco.AI.Core.Providers;
 
-namespace Community.Umbraco.AI.BrowserAI;
+namespace Umbraco.Community.AI.BrowserProvider;
 
 /// <summary>
 /// AI chat capability for Browser AI provider.

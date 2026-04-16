@@ -1,4 +1,4 @@
-namespace Community.Umbraco.AI.BrowserAI.Models;
+namespace Umbraco.Community.AI.BrowserProvider.Models;
 
 /// <summary>
 /// Response body for job details sent to browser.

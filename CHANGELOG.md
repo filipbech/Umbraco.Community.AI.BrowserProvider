@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-03-23
 
 ### Added
-- Initial release as community package (Community.Umbraco.AI.BrowserAI)
+- Initial release as community package (Umbraco.Community.AI.BrowserProvider)
 - Chat completions via Chrome's Prompt API (Gemini Nano)
 - Summarization and translation support
 - In-memory job queue with automatic cleanup
