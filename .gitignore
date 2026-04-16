@@ -17,3 +17,11 @@ obj/
 .vs/
 .vscode/
 *.swp
+
+## Umbraco demo site
+samples/**/umbraco/Data/
+samples/**/umbraco/Logs/
+samples/**/wwwroot/media/
+samples/**/appsettings.Development.json
+samples/**/appsettings-schema*.json
+samples/**/umbraco-package-schema.json
